@@ -6,6 +6,22 @@ const PAYMENTS_URL = 'https://api.picpay.com/public/payments';
 function cleanDigits(s){ return (s||'').toString().replace(/\D+/g,''); }
 
 module.exports = async (req, res) => {
+  // CORS
+  const allowList = [
+    'https://farolchat.com',
+    'https://www.farolchat.com',
+    'http://localhost:3000',
+    'http://localhost:5173'
+  ];
+  const origin = req.headers.origin;
+  const allowOrigin = allowList.includes(origin) ? origin : allowList[0];
+  res.setHeader('Access-Control-Allow-Origin', allowOrigin);
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
   try {
     if (req.method !== 'POST') {
       res.setHeader('Allow', 'POST');
@@ -84,4 +100,3 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: e.message || 'Erro interno' });
   }
 };
-
