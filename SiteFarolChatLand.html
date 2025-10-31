@@ -291,12 +291,8 @@
   <footer>© 2025 FarolChat. Todos os direitos reservados.</footer>
 
   <script>
-    // Configurações PicPay (recomendado mover para BACKEND)
-    const PICPAY_BASE = 'https://app.picpay.com';
-    const OAUTH_URL = 'https://oauth.picpay.com/oauth2/token';
-    const PAYMENTS_URL = 'https://api.picpay.com/public/payments';
-    const CLIENT_ID = '4cdaa4e8-3650-40e1-9ef3-14ae44dff60c';
-    const CLIENT_SECRET = 'QDTMEHKaY9T3pjU2vyCitF4AiXl36ztn';
+    // Backend API (configure o DNS para api.farolchat.com)
+    const API_BASE = 'https://api.farolchat.com';
 
     // Preços
     const PRECO_USUARIO = 27.90;
@@ -338,35 +334,16 @@
     closeModal?.addEventListener('click', hideModal);
     overlay.addEventListener('click', (e)=>{ if(e.target===overlay) hideModal(); });
 
-    // PicPay OAuth (CLIENT-SIDE DEMO - MIGRAR PARA BACKEND)
-    async function getAccessToken(){
-      const body = new URLSearchParams({grant_type:'client_credentials', client_id: CLIENT_ID, client_secret: CLIENT_SECRET});
-      const res = await fetch(OAUTH_URL,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
-      if(!res.ok) throw new Error('Falha ao autenticar no PicPay');
-      return await res.json();
-    }
-
-    // Criar pagamento
-    async function criarPagamento({referenceId, value, buyer, callbackUrl, returnUrl}){
-      const { access_token } = await getAccessToken();
-      const payload = {
-        referenceId,
-        callbackUrl,
-        returnUrl,
-        value: Number(value.toFixed(2)),
-        buyer
-      };
-      const res = await fetch(PAYMENTS_URL,{
+    // Criação de pagamento via backend
+    async function criarPagamentoBackend(payload){
+      const res = await fetch(`${API_BASE}/api/picpay/checkout`,{
         method:'POST',
-        headers:{
-          'Authorization': `Bearer ${access_token}`,
-          'Content-Type':'application/json'
-        },
+        headers:{ 'Content-Type':'application/json' },
         body: JSON.stringify(payload)
       });
       if(!res.ok){
         const t = await res.text();
-        throw new Error('Erro ao criar pagamento: '+t);
+        throw new Error('Erro na API: '+t);
       }
       return await res.json();
     }
@@ -397,27 +374,16 @@
         }
 
         const {firstName,lastName} = extractFirstLast(nome);
-        const referenceId = 'FAROL-' + Date.now();
-
-        const callbackUrl = 'https://seuservidor.com/picpay/webhook';
-        const returnUrl   = 'https://seusite.com/obrigado';
-
-        const buyer = {
-          firstName, lastName,
-          document: cpf,
-          phone: phone,
-          email
+        const payload = {
+          nome,
+          cpf,
+          telefone: phone,
+          email,
+          usuarios: Number(usuariosEl.value),
+          conexoes: Number(conexoesEl.value)
         };
-
-        const result = await criarPagamento({
-          referenceId,
-          value: total,
-          buyer,
-          callbackUrl,
-          returnUrl
-        });
-
-        const link = result.paymentUrl || result.qrCodeLink || result.link || null;
+        const result = await criarPagamentoBackend(payload);
+        const link = result.link || result.paymentUrl || result.qrCodeLink || null;
 
         if(link){
           msgEl.innerHTML = `Link gerado com sucesso. Você será redirecionado...`;
